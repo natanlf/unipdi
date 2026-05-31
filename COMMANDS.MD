@@ -36,3 +36,43 @@ Use o comando docker tag passando o nome atual (ou o ID) e o novo nome formatado
 Explicação do comando
 ### Sintaxe: docker tag [imagem-atual] [seu-usuario-dockerhub]/[nome-do-repositorio]:[versao]
 ``docker tag minha-api-java username/openfinance-api:v1.0.0``
+
+## Aula 4
+### Subindo a aplicação com Docker Compose
+
+``docker-compose up``
+
+Ao ajustar o docker-compose.yml e executar o comando acima, deu o seguinte erro:
+
+``ERROR: Network "unipdi_default" needs to be recreated - option "com.docker.network.enable_ipv4" has changed``
+
+Liste as redes do Docker:
+
+``docker network ls``
+
+Remova a rede problemática:
+
+``docker network rm unipdi_default``
+
+Se tiver algum container atrapalhando, remova os containers:
+
+``docker ps -a``
+
+``docker rm <container_id>``
+
+Caso tenha algum problema no docker compose e precise derrubar os containers e remover os containers, redes e volumes criados, use o comando:
+
+``docker compose down -v``
+
+### Multi stage build
+Podemos no docker file usar o multi stage build para otimizar a imagem, ou seja, podemos usar uma imagem para compilar a aplicação e outra imagem para rodar a aplicação, assim a imagem final fica menor e mais leve.
+
+Abaixo criamos um argumento para pegar o nome do jar gerado no target
+
+``ARG JAR_FILE=target/*.jar``
+
+Copia da imagem de build para a imagem final, usando o argumento criado acima para pegar o nome do jar gerado no target e transferir para a imagem final, renomeando para app.jar
+
+```COPY --from=build /app/${JAR_FILE} app.jar```
+
+Ao criar uma nova imagem usando o multi stage build, a imagem final fica menor e mais leve, pois ela só contém o necessário para rodar a aplicação, sem as dependências de build. Faz muita diferença no tamanho da imagem gerado ao comparar com a anterior. A anterior deu 607MB e a com multi stage build apenas 341MB.
