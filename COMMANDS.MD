@@ -200,3 +200,81 @@ Para anotar:
 Podemos fazer rollback para a versão anterior caso necessário, usando o comando:
 
 ``kubectl rollout undo deployment/backend-deployment``
+
+## Aula 9
+
+Vamos usar a livenessProd que faz uma requisição para a porta de onde a aplicação está rodando para saber se realmente está funcionando.
+No arquivo de frontend-deployment.yaml
+No livenessProd do frontend a porta usada é a mesma do container que é a 80, o path vamos usar o raiz porque ele é o suficiente para fazermos 
+um get com retorno 200 é suficiente para saber que a aplicação está funcionando.
+
+periodSeconds = é a quantidade de segundos que espera para confirmar se aplicação está pronta. Ou seja, a cada 10 segundos 
+verifica se a aplicação está ok.
+
+failureThreshold: 3 = testa 3 vezes para ter certeza que está funcionando.
+
+initialDelaySeconds: 20 = espera 20 segundos a aplicação iniciar, para assim poder fazer os testes.
+
+Liveness = aplicação rodando.
+
+O código abaixo reinicia o container se falhar 3 vezes.
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10
+            failureThreshold: 3
+            initialDelaySeconds: 20
+
+
+Readness = aplicação pronta para receber requisição.
+
+O código abaixo vai tirar o pod do tráfego e não existe um reinicio do pod.
+Se a checagem falhar 3 vezes vai para NOT READY.
+
+          readinessProbe: 
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10  
+            failureThreshold: 3    
+            initialDelaySeconds: 20  
+
+Precismos também definir o limite de recursos devem podem ser consumidos.
+
+### Escala
+
+[HPA = Horizontal Pod Autoscaling](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/)
+
+Para escalar temos o arquivo frontend-hpa onde temos o número mínimo de réplicas e o máximo.
+
+Ao aplicar:
+
+``kubectl apply -f frontend-hpa.yaml``
+
+Assim conseguimos criar um servidor de métricas [Repositório Servidor de Métricas](https://github.com/kubernetes-sigs/metrics-server)
+
+No Docker conseguimos ver a versão do Kubernates que nesse caso é a **v1.31.1** que é compatível com a versão **0.8.x** do servidor de métricas.
+No repositório do servidor de métricas tem a tabela de compatibilidade.
+Em metric releases vamos fazer download da versão **0.8.x**
+
+Colamos o arquivo do download para a pasta com os outro arquivos **yaml**
+
+Adicionar em args essa linha no arquivo **components.yaml**, arquivo do download:
+``- --kubelet-insecure-tls``
+
+Executar: ``kubectl apply -f components.yaml``
+
+Em algum momento depois de aplicar o yaml vai atualizar com as métricas e podemos ver com o seguinte comando:
+``kubectl get hpa``
+
+Nesse caso está usando 50% de cpu sendo que não queremos que ultrapasse 1%.
+
+Isso está acontecendo porque no arquivo **frontend-hpa** averageUtilization coloquei como 1, estava 50 antes.
+
+O frontend-deployment.yaml coloquei 2m
+
+Por isso estoura o limite e cria novas réplicas. Por exemplo **frontend-deployment.yaml** ficou com 10 réplicas de frontend
+
+Não esquecer de aplicar os yamls que atualizar.
